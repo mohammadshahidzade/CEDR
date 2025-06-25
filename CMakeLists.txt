@@ -105,7 +105,7 @@ target_include_directories(cedr PRIVATE extern/include ${CEDR_SRCDIR}/include)
 if (${CEDR_TYPE} STREQUAL DAG)
   target_include_directories(cedr PRIVATE libdash libdash/dma)
 endif ()
-target_link_libraries(cedr PRIVATE pthread dl rt)
+target_link_libraries(cedr PRIVATE pthread dl rt atomic)
 
 target_include_directories(sub_dag PRIVATE extern/include ${CEDR_SRCDIR}/include)
 target_link_libraries(sub_dag PRIVATE pthread dl rt)
@@ -117,6 +117,8 @@ if (UsePAPI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSEPAPI")
   target_link_libraries(cedr PRIVATE papi)
 endif ()
+
+# target_link_libraries(cedr atomic)
 
 # Enable additional targets for running clang-format/clang-tidy
 # https://www.labri.fr/perso/fleury/posts/programming/using-clang-tidy-and-clang-format.html
