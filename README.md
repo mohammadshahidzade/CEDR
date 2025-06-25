@@ -112,3 +112,11 @@ Finally, when experiments are complete, terminate the daemon process using:
 The CEDR daemon can be configured using an optional JSON configuration file, with an example in the repo provided as `daemon_config.json`.
 If no configuration file is specified, all values are initialized as specified in the ConfigManager [constructor](src-api/config_manager.cpp).
 If a configuration file is used, then the values specified do not need to exhaustively configure the system -- any unspecified values will be initialized as specified in the constructor.
+
+## My own Findings
+
+To make using the buildroot:
+
+```bash
+cmake --toolchain=/media/demo/fix/cva5-linux/LINUX_IMAGE/buildroot/output/host/share/buildroot/toolchainfile.cmake ..
+```
