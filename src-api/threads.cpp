@@ -21,7 +21,7 @@
 #define ON_CPU 0
 #define ON_ACC 1
 
-struct sched_attr{
+struct sched_attr_cedr{
   uint32_t size;              /* Size of this structure */
   uint32_t sched_policy;      /* Policy (SCHED_*) */
   uint64_t sched_flags;       /* Flags */
@@ -33,7 +33,7 @@ struct sched_attr{
   uint64_t sched_period;
 };
 
-int sched_setattr(pid_t pid, const struct sched_attr *attr, unsigned int flags){
+int sched_setattr(pid_t pid, const struct sched_attr_cedr *attr, unsigned int flags){
   return syscall(__NR_sched_setattr, pid, attr, flags);
 }
 
@@ -48,9 +48,9 @@ void *hardware_thread(void *ptr) {
 
   // NEW: Sched_nice approach
   /*LOG_INFO << "Setting the SCHED_NICE values for the spawned hardware thread";
-  auto *resource_attr = (sched_attr *)malloc(sizeof(sched_attr));
+  auto *resource_attr = (sched_attr_cedr *)malloc(sizeof(sched_attr_cedr));
   {
-    (*resource_attr).size = sizeof(sched_attr);
+    (*resource_attr).size = sizeof(sched_attr_cedr);
     (*resource_attr).sched_policy = SCHED_OTHER;
     (*resource_attr).sched_flags = 0;
     (*resource_attr).sched_nice = -10;
