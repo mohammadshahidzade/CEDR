@@ -11,15 +11,37 @@
 #define DASH_HPC 5
 #define DASH_ZCU102_2FFT_2MMULT_1ZIP_1CONV2D_HWSCHEDULER 6
 #define DASH_VC707_3FFT_RISCV 7
+#define DASH_CVA5 8
 
 //#define DASH_PLATFORM DASH_ZCU102_2020_2
 //#define DASH_PLATFORM DASH_ZCU102_10FFT_2MMULT_2ZIP_HWSCHEDULER
 //#define DASH_PLATFORM DASH_ZCU102_2FFT_2MMULT_1ZIP_1CONV2D_HWSCHEDULER
 //#define DASH_PLATFORM DASH_JETSONAGX
-#define DASH_PLATFORM DASH_VC707_3FFT_RISCV
+#define DASH_PLATFORM DASH_CVA5
 #define GLOBAL_UDMABUF_SIZE 1048576
+#if DASH_PLATFORM == DASH_CVA5
+  #pragma message("=*=*= Building for CVA5 =*=*=")
+  #define FFT_UDMABUF_NUM  0
+  #define FFT_UDMABUF_SIZE GLOBAL_UDMABUF_SIZE
+  // If defined, we assume that we can configure the FFT IP through AXI GPIO
+  // Otherwise, we assume that an fft_axi_config IP is being used
+  #define FFT_CONFIG_VIA_GPIO
+  #define FFT_GPIO_CONFIG_DELAY 10
+  #define FFT_CONTROL_BASE_ADDRS    ((uint32_t[]) {0x80010000})
+  #define FFT_DMA_CTRL_BASE_ADDRS   ((uint32_t[]) {0x80000000})
+  #define FFT_GPIO_RESET_BASE_ADDRS ((uint32_t[]) {0x80020000})
 
-#if DASH_PLATFORM == DASH_ZCU102_2020_2
+
+  #define HWSCHD_UDMABUF_NUM          3
+  #define HWSCHD_UDMABUF_SIZE         GLOBAL_UDMABUF_SIZE
+  #define HWSCHD_DMA_CTRL_BASE_ADDR   0x0 // No hardware scheduler
+
+  #define CONV_2D_UDMABUF_NUM 4
+  #define CONV_2D_UDMABUF_SIZE 0
+  #define CONV_2D_DMA_CTRL_BASE_ADDRS   0x0 // No conv 2D
+  #define CONV_2D_CONTROL_BASE_ADDRS    0x0 // No conv 2D
+
+#elif DASH_PLATFORM == DASH_ZCU102_2020_2
   #pragma message("=*=*= Building for ZCU102 =*=*=")
 
   #define FFT_UDMABUF_NUM  0
