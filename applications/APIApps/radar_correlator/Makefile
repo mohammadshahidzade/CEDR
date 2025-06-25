@@ -1,7 +1,7 @@
-ARCH ?= x86
+ARCH ?= riscv32
 
 LIBDASH_INC ?= ../../../libdash
-LIBDASH_LIB ?= ../../../build/libdash
+LIBDASH_LIB ?= ../../../build_riscv32/libdash
 
 INCLUDES = -I $(LIBDASH_INC)
 LIBS = -L $(LIBDASH_LIB)
@@ -18,6 +18,10 @@ else ifeq ($(ARCH), riscv64)
         CXX = riscv64-linux-gnu-g++
 		CC = riscv64-linux-gnu-gcc
         RUNTIME_LIBDIR = ../../../build_riscv/libdash
+else ifeq ($(ARCH), riscv32)
+        CXX = /media/demo/fix/cva5-linux/LINUX_IMAGE/buildroot/output/host/bin/riscv32-buildroot-linux-gnu-g++
+		CC = /media/demo/fix/cva5-linux/LINUX_IMAGE/buildroot/output/host/bin/riscv32-buildroot-linux-gnu-gcc
+        RUNTIME_LIBDIR = ../../../build_riscv32/libdash
 endif
 
 $(APP_NAME)-$(ARCH).so: $(SOURCES)
