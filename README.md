@@ -120,3 +120,10 @@ To make using the buildroot:
 ```bash
 cmake --toolchain=/media/demo/fix/cva5-linux/LINUX_IMAGE/buildroot/output/host/share/buildroot/toolchainfile.cmake ..
 ```
+
+To include the libdashmodules:
+
+
+```bash
+cmake --toolchain=/media/demo/CEDR_LINUX/cva5-linux/LINUX_IMAGE/buildroot/output/host/share/buildroot/toolchainfile.cmake -DLIBDASH_MODULES="FFT" ..
+```
