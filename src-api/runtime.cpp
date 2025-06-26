@@ -294,10 +294,15 @@ void launchDaemonRuntime(ConfigManager &cedr_config, pthread_t *resource_handle,
 
   // Only CPU resources handle the threads
   //for (int cpu_id = processor_count-2; cpu_id >= 1; cpu_id--) { //3big cores
-  for (int cpu_id = processor_count-2; cpu_id >= 2; cpu_id--) { //4big cores
+  // for (int cpu_id = processor_count-2; cpu_id >= 2; cpu_id--) { //4big cores
+  //   CPU_SET(cpu_id, &non_kernel_cpuset);
+  //   LOG_VERBOSE << "Including CPU " << cpu_id << " to available core list that applications can use for NK execution";
+  // }
+  for (int cpu_id = processor_count-1; cpu_id >= 0; cpu_id--) { // All cores
     CPU_SET(cpu_id, &non_kernel_cpuset);
     LOG_VERBOSE << "Including CPU " << cpu_id << " to available core list that applications can use for NK execution";
   }
+
 
   // Variable to keep track of killed/resolved applications
   int resolved_app_count = 0; 
