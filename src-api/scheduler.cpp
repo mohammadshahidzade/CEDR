@@ -701,6 +701,7 @@ int scheduleETF(ConfigManager &cedr_config, std::deque<task_nodes *> &ready_queu
   uint64_t current_time_ns = cedrGetTime(hardware_thread_handle[0].time_per_cycle);   
   LOG_DEBUG << "scheduleETF:  num_of_resources" << num_of_resources << " \n ";
 
+
   for (int t = 0; t < ready_queue_size; t++) { // Should run a maximum iteration of size of the ready queue
     earliest_estimated_availtime = ULLONG_MAX;
     // For loop for going over task list
@@ -712,6 +713,10 @@ int scheduleETF(ConfigManager &cedr_config, std::deque<task_nodes *> &ready_queu
         auto resourceIsSupported = ((*itr)->supported_resources[(uint8_t) resourceType]);
         
         if(resourceIsSupported){
+
+            // printf("Resource %u (%s) avail time: %llu, current time: %llu, resource estimate: %llu\n", 
+            //    i, hardware_thread_handle[i].resource_name, 
+            //    hardware_thread_handle[i].thread_avail_time, current_time_ns, cedr_config.getDashExecTime((*itr)->task_type, resourceType));
           uint64_t thread_avail_time = hardware_thread_handle[i].thread_avail_time;
           uint64_t avail_time = (thread_avail_time < current_time_ns) ? 0 : (thread_avail_time - current_time_ns);
           uint64_t finishTime = avail_time + cedr_config.getDashExecTime((*itr)->task_type, resourceType);

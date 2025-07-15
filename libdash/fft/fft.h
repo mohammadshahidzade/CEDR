@@ -30,7 +30,7 @@ typedef struct fft_cmplx_type {
 #define REQUIRED_BUFFER_SIZE_FLT (2 * 2048 * sizeof(fft_cmplx_type))
 static_assert(UDMABUF_PARTITION_SIZE >= REQUIRED_BUFFER_SIZE_FLT, "Current udmabuf size is too small to support this many FFT accelerators!");
 
-//#define __DASH_FFT_DEBUG__
+// #define __DASH_FFT_DEBUG__
 
 #ifdef LOG
 #undef LOG
@@ -106,8 +106,10 @@ void config_ifft(volatile unsigned int *base, unsigned int size) {
   // Write that the configuration data is valid
   fft_write_reg(base, 0x0, 0x1);
   // Delay a couple cycles
-  volatile uint32_t dummy_var = 0;
-  while (dummy_var < FFT_GPIO_CONFIG_DELAY) { dummy_var++; }
+  
+  for (volatile unsigned int dummy_var = 0; dummy_var < FFT_GPIO_CONFIG_DELAY; dummy_var++) {
+    __asm__ volatile ("nop");
+  }
   // Release the configuration tdata valid bit
   fft_write_reg(base, 0x0, 0x0);
 #else
@@ -121,6 +123,8 @@ void config_ifft(volatile unsigned int *base, unsigned int size) {
 //###################################################################################
 void config_fft(volatile unsigned int *base, unsigned int size) {
 #if defined(FFT_CONFIG_VIA_GPIO)
+
+  // printf("MDEBUG:fft size is %lu\n", size);
   // So this functionality is configuring the Xilinx FFT through an AXI GPIO IP
   // GPIO 1 => data at 0x0000, tri at 0x0004, connected to the "tvalid" pin of FFT IP
   // GPIO 2 => data at 0x0008, tri at 0x000C, connected to the "tdata" pin of FFT IP
@@ -133,8 +137,9 @@ void config_fft(volatile unsigned int *base, unsigned int size) {
   // Write that the configuration data is valid
   fft_write_reg(base, 0x0, 0x1);
   // Delay a couple cycles
-  volatile uint32_t dummy_var = 0;
-  while (dummy_var < FFT_GPIO_CONFIG_DELAY) { dummy_var++; }
+  for (volatile unsigned int dummy_var = 0; dummy_var < FFT_GPIO_CONFIG_DELAY; dummy_var++) {
+    __asm__ volatile ("nop");
+  }
   // Release the configuration tdata valid bit
   fft_write_reg(base, 0x0, 0x0);
 #else
@@ -167,7 +172,7 @@ volatile unsigned int* init_fft_reset(unsigned int FFT_GPIO_RESET_BASE_ADDR) {
     LOG("[fft] Can't open /dev/mem. Exiting ...\n");
     exit(1);
   }
-
+  LOG("after opening /dev/mem\n");
   // Obtain virtual address to DMA control slave through mmap
   virtual_addr = (volatile unsigned int *)mmap(nullptr,
                                             getpagesize(),
@@ -175,6 +180,8 @@ volatile unsigned int* init_fft_reset(unsigned int FFT_GPIO_RESET_BASE_ADDR) {
                                             MAP_SHARED,
                                             fd,
                                             FFT_GPIO_RESET_BASE_ADDR);
+
+  LOG("after mmap and the virtual_addr is %p\n", virtual_addr);
 
   if (virtual_addr == MAP_FAILED) {
     // TODO: does mmap set errno? might be nice to perror here
@@ -194,14 +201,20 @@ void reset_fft_and_dma(volatile unsigned int *base) {
   // Note: technically we're writing to a different reg than is typically used with fft_write_reg
   // But the functionality we need is exactly the same, so it's fine.
   // Set the GPIO as write mode
+  LOG("[fft] Resetting FFT and DMA IP cores via GPIO at base address %p\n", base);
   fft_write_reg(base, 0x1, 0x0);
   // Enable the reset
+  LOG("[fft] Resseting FFT");
   fft_write_reg(base, 0x0, 0x0);
   // Delay a bit
-  volatile uint32_t dummy_var = 0;
-  while (dummy_var < 10) { dummy_var++; }
+  
+  for (volatile unsigned int dummy_var = 0; dummy_var < FFT_GPIO_CONFIG_DELAY; dummy_var++) {
+    __asm__ volatile ("nop");
+  }
   // Release the reset
+  LOG("[fft] Releasing reset on FFT \n");
   fft_write_reg(base, 0x0, 0x1);
+  LOG("[fft] Reset complete\n");
 }
 
 void inline close_fft_reset(volatile unsigned int *virtual_addr) {

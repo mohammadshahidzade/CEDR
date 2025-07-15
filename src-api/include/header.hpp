@@ -103,6 +103,10 @@ struct task_node_t {
   resource_type assigned_resource_type;
   std::string assigned_resource_name;
 
+  // This section I define my own variables
+  size_t input_size; // In bytes
+  bool is_fft; // Is this task a FFT task?
+
   struct task_node_t &operator=(const struct task_node_t &other) {
     if (this == &other) {
       return *this;
@@ -119,6 +123,10 @@ struct task_node_t {
     app_pnt = other.app_pnt;
     parent_app_pthread = other.parent_app_pthread;
     actual_run_func = other.actual_run_func;
+    
+    // My own variables
+    input_size = other.input_size;
+    is_fft = other.is_fft;
 
     return *this;
   }
@@ -199,6 +207,8 @@ struct struct_logging {
   char task_name[50];
   char assign_resource_name[25];
   uint64_t start, end;
+  size_t input_size; // In bytes
+  bool is_fft;
 };
 
 struct struct_schedlogging {

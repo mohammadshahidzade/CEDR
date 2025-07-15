@@ -99,6 +99,7 @@ void DASH_FFT_flt_nb(dash_cmplx_flt_type** input, dash_cmplx_flt_type** output, 
     (*(kernel_barrier->completion_ctr))++;
   }
 #else
+// printf("[MDEBUG] DASH_FFT_flt_nb: size=%zu, isForwardTransform=%s\n", *size, *isForwardTransform ? "true" : "false");
   enqueue_kernel("DASH_FFT", "flt", 5, input, output, size, isForwardTransform, kernel_barrier);
 #endif
 }
@@ -107,6 +108,8 @@ void DASH_FFT_flt(dash_cmplx_flt_type* input, dash_cmplx_flt_type* output, size_
 #if defined(CPU_ONLY) || defined(DISABLE_FFT_CEDR)
   DASH_FFT_flt_cpu(&input, &output, &size, &isForwardTransform);
 #else
+  // printf("fft size is %lu\n", size);
+// if(isForwardTransform) {
   pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   uint32_t completion_ctr = 0;
@@ -120,6 +123,10 @@ void DASH_FFT_flt(dash_cmplx_flt_type* input, dash_cmplx_flt_type* output, size_
     pthread_cond_wait(barrier.cond, barrier.mutex);
   }
   pthread_mutex_unlock(barrier.mutex);
+// } 
+// else {
+//   DASH_FFT_flt_cpu(&input, &output, &size, &isForwardTransform);
+// }
 #endif
 }
 

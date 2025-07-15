@@ -66,6 +66,7 @@ void dma_wait_for_tx_complete(volatile unsigned int *base);
 // Function to Check if DMA RX to complete
 //###################################################################################
 void dma_wait_for_rx_complete(volatile unsigned int *base);
+void dma_wait_for_rx_interrupt(volatile unsigned int *base);
 
 //###################################################################################
 // Function to reset DMA

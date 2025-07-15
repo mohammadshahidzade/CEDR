@@ -91,6 +91,10 @@ extern "C" void enqueue_kernel(const char* kernel_name, const char* precision_na
       new_node->args.push_back(va_arg(args, void*));
     }
   }
+  size_t input_size = *static_cast<size_t*>(new_node->args.at(2));
+  bool is_fft = *static_cast<bool*>(new_node->args.at(3));
+  new_node->is_fft = is_fft; // Default value, will be set to true if this is a FFT task
+  new_node->input_size = input_size; // Default value, will be set to the size of the input data
 
   for (int resource = 0; resource < resource_type::NUM_RESOURCE_TYPES; resource++) {
     // If we have an implementation for kernel "kernel_str" on resource "resource", ...
@@ -583,6 +587,9 @@ void launchDaemonRuntime(ConfigManager &cedr_config, pthread_t *resource_handle,
       strcpy(log_obj.assign_resource_name, task->assigned_resource_name.c_str());
       log_obj.start = task->start;
       log_obj.end = task->end;
+      log_obj.input_size = task->input_size;
+      log_obj.is_fft = task->is_fft;
+
       stream_timing_log.push_back(log_obj);
       free(task);
 
@@ -680,10 +687,11 @@ void launchDaemonRuntime(ConfigManager &cedr_config, pthread_t *resource_handle,
         }
 
         fprintf(trace_fp,
-                "app_id: %d, app_name: %s, task_id: %d, task_name: %s, "
-                "resource_name: %s, ref_start_time: %" PRIu64 ", ref_stop_time: %" PRIu64 ", "
-                "actual_exe_time: %" PRIu64 "\n",
-                task.app_id, task.app_name, task.task_id, task.task_name, task.assign_resource_name, s0, e0, e0 - s0);
+          "app_id: %d, app_name: %s, task_id: %d, task_name: %s, "
+          "resource_name: %s, ref_start_time: %" PRIu64 ", ref_stop_time: %" PRIu64 ", "
+          "actual_exe_time: %" PRIu64 ", input_size: %zu, is_fft: %s\n",
+          task.app_id, task.app_name, task.task_id, task.task_name, task.assign_resource_name, s0, e0, e0 - s0, task.input_size,
+          task.is_fft ? "true" : "false");
 
         it = stream_timing_log.erase(it);
       }

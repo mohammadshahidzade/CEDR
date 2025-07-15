@@ -110,6 +110,84 @@ void dma_wait_for_rx_complete(volatile unsigned int* base) {
   }
 }
 
+#define IOC_IRQ_STATUS_BIT      (1 << 12)
+
+void dma_wait_for_rx_interrupt(volatile unsigned int* base) {
+  unsigned int ctr = 0;
+  unsigned int status = 0;
+
+  // Enable Interrupt on Complete (IOC) in the control register
+
+  while (1) {
+    status = base[DMA_OFFSET_S2MM_STATUS];
+    LOG("[dma-debug] DMA at %p: RX interrupt detected (status: 0x%x)\n", base, status);
+
+    if (status & IOC_IRQ_STATUS_BIT) {
+      LOG("[dma] DMA at %p: RX interrupt detected (status: 0x%x)\n", base, status);
+      
+      // Clear the interrupt by writing 1 to bit 12
+      base[DMA_OFFSET_S2MM_STATUS] = IOC_IRQ_STATUS_BIT;
+      return;
+    }
+
+    if (ctr % STATUS_INTERVAL == 0) {
+      LOG("[dma] DMA at %p RX Waiting (status: 0x%x)\n", base, status);
+    }
+
+    if (ctr == WAIT_LIMIT) {
+      LOG("[dma] DMA at %p giving up waiting for RX interrupt (S2MM)!\n", base);
+      return;
+    }
+
+    ctr++;
+  }
+}
+
+
+
+
+// #define DMACR_RUNSTOP_MASK    0x00000001
+// #define DMASR_IDLE_MASK       0x00000002
+// #define DMASR_HALTED_MASK     0x00000001
+// #define DMASR_ERR_MASK        0x00007000
+
+// void dma_wait_for_rx_complete(volatile unsigned int* base) {
+//   unsigned int ctr = 0;
+//   unsigned int status = 0;
+//   unsigned int dmacr = base[DMA_OFFSET_S2MM_CONTROL];
+//   LOG("[dma] S2MM_DMACR = 0x%x\n", base[DMA_OFFSET_S2MM_CONTROL]);
+//   LOG("[dma] S2MM_STATUS = 0x%x\n", base[DMA_OFFSET_S2MM_STATUS]);
+//   LOG("[dma] S2MM_DEST_ADDR = 0x%x\n", base[DMA_OFFSET_S2MM_SRCLWR]);
+//   LOG("[dma] S2MM_LENGTH = 0x%x\n", base[DMA_OFFSET_S2MM_LENGTH]);
+
+//   if ((dmacr & DMACR_RUNSTOP_MASK) == 0) {
+//     LOG("[dma-debug] WARNING: DMA RX was never started (Run/Stop = 0)\n");
+//     return;
+//   }
+
+//   while ((base[DMA_OFFSET_S2MM_STATUS] & DMASR_IDLE_MASK) == 0) {
+//     status = base[DMA_OFFSET_S2MM_STATUS];
+
+//     if (status & DMASR_HALTED_MASK) {
+//       LOG("[dma-debug] ERROR: DMA halted! Status: 0x%x\n", status);
+//       return;
+//     }
+
+//     if (status & DMASR_ERR_MASK) {
+//       LOG("[dma-debug] ERROR: DMA error occurred! Status: 0x%x\n", status);
+//       return;
+//     }
+
+//     if (ctr++ == WAIT_LIMIT) {
+//       LOG("[dma-debug] TIMEOUT: DMA RX did not complete. Status: 0x%x\n", status);
+//       return;
+//     }
+//   }
+
+//   LOG("[dma] RX DMA completed successfully.\n");
+// }
+
+
 void reset_dma(volatile unsigned int* base) {
   LOG("Resetting DMA at base address: %p\n", base);
   dma_write_reg(base, DMA_OFFSET_MM2S_CONTROL, 0x4);

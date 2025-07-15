@@ -1,4 +1,4 @@
-ARCH ?= x86
+ARCH ?= riscv32
 
 LIBDASH_INC ?= ../../../libdash
 LIBDASH_LIB ?= ../../../build/libdash
@@ -20,7 +20,12 @@ else ifeq ($(ARCH), riscv64)
         CXX = riscv64-linux-gnu-g++
 		CC = riscv64-linux-gnu-gcc
         RUNTIME_LIBDIR = ../../../build_riscv/libdash
+else ifeq ($(ARCH), riscv32)
+        CXX = /media/demo/CEDR_LINUX/cva5-linux/LINUX_IMAGE/buildroot/output/host/bin/riscv32-buildroot-linux-gnu-g++
+		CC = /media/demo/CEDR_LINUX/cva5-linux/LINUX_IMAGE/buildroot/output/host/bin/riscv32-buildroot-linux-gnu-gcc
+        RUNTIME_LIBDIR = ../../../build/libdash
 endif
+
 
 default: blocking nonblocking
 
@@ -37,10 +42,17 @@ nonblocking: $(SOURCES_NB)
 phased: $(SOURCES_PHASED_NB)
 	$(CC) $(CFLAGS) $(INCLUDES) -shared -fPIC $(SOURCES_PHASED_NB) -o $(APP_NAME)-phased-nb-$(ARCH).so
 
-.PHONY: standalone
+.PHONY: standalone standalone-nb
+
 standalone: $(APP_NAME)-$(ARCH).out
+
 $(APP_NAME)-$(ARCH).out: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) $(LIBS) $(SOURCES) -l:libdash.a -lm -o $(APP_NAME)-$(ARCH).out
+
+standalone-nb: $(APP_NAME)-nb-$(ARCH).out
+
+$(APP_NAME)-nb-$(ARCH).out: $(SOURCES_NB)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) $(LIBS) $(SOURCES_NB) -l:libdash.a -lm -o $(APP_NAME)-nb-$(ARCH).out
 
 clean:
 	-rm $(APP_NAME)-*.so

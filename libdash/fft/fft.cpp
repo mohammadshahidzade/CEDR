@@ -6,13 +6,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-
+#include <sys/mman.h>
 #include "dash_types.h"
 
 #include "dma.h"
 #include "fft.h"
 
 #define SEC2NANOSEC 1000000000
+#define IOC_IRQ_ENABLE_BIT      (1 << 12)
 
 static volatile unsigned int* fft_control_base_addr[NUM_FFTS];
 static volatile unsigned int* dma_control_base_addr[NUM_FFTS];
@@ -23,6 +24,19 @@ static uint64_t               udmabuf_phys_addr;
 static volatile unsigned int* fft_gpio_reset_base_addr[NUM_FFTS];
 #endif
 
+// #define CACHE_LINE_SIZE 64
+
+// void flush_output_region(void *base, size_t size) {
+//     uintptr_t addr = (uintptr_t)base & ~(CACHE_LINE_SIZE - 1);
+//     uintptr_t end  = ((uintptr_t)base + size + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1);
+
+//     for (; addr < end; addr += CACHE_LINE_SIZE) {
+//         asm volatile ("cbo.inval %0(%1)" 
+//                       :: "i"(0), "r"(addr) 
+//                       : "memory");
+//     }
+// }
+
 void __attribute__((constructor)) setup_fft(void) {
   LOG("[fft] Running FFT constructor\n");
 
@@ -30,7 +44,9 @@ void __attribute__((constructor)) setup_fft(void) {
 #if defined(FFT_GPIO_RESET_BASE_ADDRS)
     LOG("[fft] Initializing FFT's reset GPIO at 0x%x\n", FFT_GPIO_RESET_BASE_ADDRS[i]);
     fft_gpio_reset_base_addr[i] = init_fft_reset(FFT_GPIO_RESET_BASE_ADDRS[i]);
+    LOG("finished initializing\n");
     reset_fft_and_dma(fft_gpio_reset_base_addr[i]);
+    LOG("after reset\n");
 #endif
 
     LOG("[fft] Initializing FFT DMA at 0x%x\n", FFT_DMA_CTRL_BASE_ADDRS[i]);
@@ -82,51 +98,61 @@ void fft_accel(fft_cmplx_type* input, fft_cmplx_type* output, size_t fft_size, b
   volatile unsigned int *udmabuf_base = udmabuf_base_addr + (resource_idx * (UDMABUF_PARTITION_SIZE / sizeof(unsigned int)));
   uint64_t udmabuf_phys = udmabuf_phys_addr + (resource_idx * UDMABUF_PARTITION_SIZE);
 
-  LOG("[fft-%u] fft control reg is %p\n", resource_idx, fft_control_base);
-  LOG("[fft-%u] dma control reg is %p\n", resource_idx, dma_control_base);
-  LOG("[fft-%u] udmabuf base address is %p\n", resource_idx, udmabuf_base);
-  LOG("[fft-%u] udmabuf phys address is 0x%lx\n", resource_idx, udmabuf_phys);
+  // LOG("[fft-%u] fft control reg is %p\n", resource_idx, fft_control_base);
+  // LOG("[fft-%u] dma control reg is %p\n", resource_idx, dma_control_base);
+  // LOG("[fft-%u] udmabuf base address is %p\n", resource_idx, udmabuf_base);
+  // LOG("[fft-%u] udmabuf phys address is 0x%lx\n", resource_idx, udmabuf_phys);
 
 #if defined(FFT_GPIO_RESET_BASE_ADDRS)
   volatile unsigned int *fft_gpio_reset_base = fft_gpio_reset_base_addr[resource_idx];
-  LOG("[fft-%u] fft gpio reset base address is %p\n", resource_idx, fft_gpio_reset_base);
-  LOG("[fft-%u] Using GPIO to reset both FFT and FFT DMA IP cores...\n", resource_idx);
+  // LOG("[fft-%u] fft gpio reset base address is %p\n", resource_idx, fft_gpio_reset_base);
+  // LOG("[fft-%u] Using GPIO to reset both FFT and FFT DMA IP cores...\n", resource_idx);
   reset_fft_and_dma(fft_gpio_reset_base);
 #else
   LOG("[fft-%u] Resetting DMA engine\n", resource_idx);
   reset_dma(dma_control_base);
 #endif
+  // LOG("enabling interrupts\n");
+  dma_control_base[DMA_OFFSET_S2MM_CONTROL] |= IOC_IRQ_ENABLE_BIT;
 
-  LOG("[fft-%u] Configuring as %lu-Pt %s\n", resource_idx, fft_size, isForwardTransform ? "FFT" : "IFFT");
+
+  // LOG("[after reset] S2MM_DMACR = 0x%x\n", dma_control_base[DMA_OFFSET_S2MM_CONTROL]);
+  // LOG("[after reset] S2MM_STATUS = 0x%x\n", dma_control_base[DMA_OFFSET_S2MM_STATUS]);
+  // LOG("[after reset] S2MM_DEST_ADDR = 0x%x\n", dma_control_base[DMA_OFFSET_S2MM_SRCLWR]);
+  // LOG("[after reset] S2MM_LENGTH = 0x%x\n", dma_control_base[DMA_OFFSET_S2MM_LENGTH]);
+
+  // LOG("[fft-%u] Configuring as %lu-Pt %s\n", resource_idx, fft_size, isForwardTransform ? "FFT" : "IFFT");
   if (isForwardTransform) {
     config_fft(fft_control_base, log2(fft_size));
   } else {
     config_ifft(fft_control_base, log2(fft_size));
   }
 
-  LOG("[fft-%u] Copying input buffer to udmabuf (udmabuf_base: %p, input: %p)\n", resource_idx, udmabuf_base, input);
+  // LOG("[fft-%u] Copying input buffer to udmabuf (udmabuf_base: %p, input: %p)\n", resource_idx, udmabuf_base, input);
   memcpy((unsigned int*) udmabuf_base, input, fft_size * sizeof(fft_cmplx_type));
 
-  LOG("[fft-%u] Calling setup_rx\n", resource_idx);
+  // LOG("[fft-%u] Calling setup_rx\n", resource_idx);
   setup_rx(dma_control_base, udmabuf_phys + (fft_size * sizeof(fft_cmplx_type)), fft_size * sizeof(fft_cmplx_type));
 
-  LOG("[fft-%u] Calling setup_tx\n", resource_idx);
-  LOG("[fft-%u] Waiting for RX to complete\n", resource_idx);
+  // LOG("[fft-%u] Calling setup_tx\n", resource_idx);
+  // LOG("[fft-%u] Waiting for RX to complete\n", resource_idx);
   clock_gettime(CLOCK_MONOTONIC_RAW, &start_accel);
 
   setup_tx(dma_control_base, udmabuf_phys, fft_size * sizeof(fft_cmplx_type));
   
-  dma_wait_for_rx_complete(dma_control_base);
+  // dma_wait_for_rx_complete(dma_control_base);
+  dma_wait_for_rx_interrupt(dma_control_base);
   
   clock_gettime(CLOCK_MONOTONIC_RAW, &end_accel);
 
-  LOG("[fft-%u] %lu-Pt FFT accelerator execution time (ns): %lf\n", resource_idx, fft_size,
-         ((double)end_accel.tv_sec * SEC2NANOSEC + (double)end_accel.tv_nsec) - ((double)start_accel.tv_sec * SEC2NANOSEC + (double) start_accel.tv_nsec));
+  // LOG("[fft-%u] %lu-Pt FFT accelerator execution time (ns): %lf\n", resource_idx, fft_size,
+  //        ((double)end_accel.tv_sec * SEC2NANOSEC + (double)end_accel.tv_nsec) - ((double)start_accel.tv_sec * SEC2NANOSEC + (double) start_accel.tv_nsec));
 
-  LOG("[fft-%u] Memcpy output back from physical address: %lx\n", resource_idx, udmabuf_phys + (2 * fft_size * sizeof(unsigned int)));
+  // LOG("[fft-%u] Memcpy output back from physical address: %lx\n", resource_idx, udmabuf_phys + (2 * fft_size * sizeof(unsigned int)));
+
   memcpy(output, (unsigned int*) &udmabuf_base[2 * fft_size], fft_size * sizeof(fft_cmplx_type));
 
-  LOG("[fft-%u] Finished %lu-Pt %s Execution on FFT %u on the FPGA\n", resource_idx, fft_size, isForwardTransform ? "FFT" : "IFFT", resource_idx);
+  // LOG("[fft-%u] Finished %lu-Pt %s Execution on FFT %u on the FPGA\n", resource_idx, fft_size, isForwardTransform ? "FFT" : "IFFT", resource_idx);
 }
 
 extern "C" void DASH_FFT_flt_fft(dash_cmplx_flt_type** input, dash_cmplx_flt_type** output, size_t* size, bool* isForwardTransform, uint8_t resource_idx) {

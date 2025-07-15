@@ -132,6 +132,10 @@ void *hardware_thread(void *ptr) {
           }
         }
 
+        size_t* size_ptr = static_cast<size_t*>(task->args.at(2));
+        bool* bool_ptr = static_cast<bool*>(task->args.at(3));
+        LOG_DEBUG << "[MDEBUG]bool_ptr value: " << (*bool_ptr) << ", size_ptr value: " << (*size_ptr);
+
         LOG_VERBOSE << "About to dispatch " << worker_thread->task->task_name;
 #if defined(USEPAPI)
         if (cedr_config->getUsePAPI() && PAPI_is_initialized()) {
@@ -142,6 +146,7 @@ void *hardware_thread(void *ptr) {
           }
         }
 #endif
+        asm volatile ("fence" ::: "memory");//doing one fence here to ensure that the task is not reordered
         last_busy = cedrGetTime(worker_thread->time_per_cycle);
         worker_thread->task->start = last_busy;
 
