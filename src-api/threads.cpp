@@ -146,7 +146,6 @@ void *hardware_thread(void *ptr) {
           }
         }
 #endif
-        asm volatile ("fence" ::: "memory");//doing one fence here to ensure that the task is not reordered
         last_busy = cedrGetTime(worker_thread->time_per_cycle);
         worker_thread->task->start = last_busy;
 

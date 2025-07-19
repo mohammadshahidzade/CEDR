@@ -91,10 +91,12 @@ extern "C" void enqueue_kernel(const char* kernel_name, const char* precision_na
       new_node->args.push_back(va_arg(args, void*));
     }
   }
-  size_t input_size = *static_cast<size_t*>(new_node->args.at(2));
-  bool is_fft = *static_cast<bool*>(new_node->args.at(3));
-  new_node->is_fft = is_fft; // Default value, will be set to true if this is a FFT task
-  new_node->input_size = input_size; // Default value, will be set to the size of the input data
+  if(n_vargs >= 4) {
+    size_t input_size = *static_cast<size_t*>(new_node->args.at(2));
+    bool is_fft = *static_cast<bool*>(new_node->args.at(3));
+    new_node->is_fft = is_fft; // Default value, will be set to true if this is a FFT task
+    new_node->input_size = input_size; // Default value, will be set to the size of the input data
+  }
 
   for (int resource = 0; resource < resource_type::NUM_RESOURCE_TYPES; resource++) {
     // If we have an implementation for kernel "kernel_str" on resource "resource", ...
@@ -128,10 +130,17 @@ extern "C" void enqueue_kernel(const char* kernel_name, const char* precision_na
   LOG_INFO << "I have finished initializing my \'" << kernel_str << "\' node and pushed it onto the task list";
 }
 
-void nk_thread_func(void* runfunc) {
+
+void nk_thread_func(void* args) {
+  struct_app* app = (struct_app*) args;
+  pthread_mutex_lock(&app_thread_map_mutex);
+  app_thread_map[app->app_pthread] = app; // NEW: Store application structs indexed by their main thread
+  pthread_mutex_unlock(&app_thread_map_mutex);
+
+  LOG_INFO << "nk_thread_func started for app: " << app->app_name;
   // Cast our voidptr argument to be a function pointer #justCThings
   // int main(int argc, char** argv, char** envp)
-  int (*libmain)(int, char**, char**) = (int(*)(int, char**, char**)) runfunc;
+  int (*libmain)(int, char**, char**) = (int(*)(int, char**, char**)) app->main_func_handle;
   // Call the library's main
   const char* argv = "cedr_app";
   (*libmain)(1, (char**) &argv, nullptr);
@@ -493,13 +502,10 @@ void launchDaemonRuntime(ConfigManager &cedr_config, pthread_t *resource_handle,
 
         // NOTE: Finally creating thread
         uint64_t clock_vir = cedrGetTime(hardware_thread_handle[0].time_per_cycle);          
-        pthread_create(&(app->app_pthread), &non_kernel_attr, (void *(*)(void *)) nk_thread_func, (void*) app->main_func_handle);
+        pthread_create(&(app->app_pthread), &non_kernel_attr, (void *(*)(void *)) nk_thread_func, (void*) app);
         app->start_time = clock_vir;
         app->is_running = true;
         LOG_INFO << "Thread for application " << app->app_name << " launched!";
-        pthread_mutex_lock(&app_thread_map_mutex);
-        app_thread_map[app->app_pthread] = app; // NEW: Store application structs indexed by their main thread
-        pthread_mutex_unlock(&app_thread_map_mutex);
       }
     }
 
